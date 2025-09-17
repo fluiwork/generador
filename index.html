@@ -41,7 +41,7 @@
   <h1>Generador de campañas Google Ads</h1>
 
   <!-- API Key: ahora opcional. Si no la pegás, tenés que pegar manualKeywords y manualAds -->
-  <label>API Key <span class="small"> </span></label>
+  <label>OpenAI API Key <span class="small"> </span></label>
   <input id="apiKey" type="password" placeholder="sk-..." />
 
   <label>Brief / Tema (opcional si vas a pegar manualmente keywords y anuncios)</label>
@@ -126,16 +126,13 @@
 
   <hr style="margin:14px 0"/>
 
-  <!-- Manual inputs: útiles cuando no hay API key o quieres controlar todo -->
-  <h3>Entradas manuales (opcional — usar si no pegas API key)</h3>
-  <div class="note">Si NO pegas tu OpenAI API Key, para generar deberás al menos pegar <strong>Keywords</strong> y <strong>Anuncios</strong> manuales. Si pegas API key, estos campos son opcionales y se usarán como overrides cuando estén presentes.</div>
 
-  <label>Manual Keywords (una por línea) — <span class="small">al menos 1 keyword es obligatoria</span></label>
+  <label>Manual Keywords (una por línea, opcional si usarás Apikey) </label>
   <textarea id="manualKeywords" rows="4" placeholder="zapatos running mujer amortiguacion
 zapatillas para correr mujer
 calzado running mujer"></textarea>
 
-  <label>Manual Ads — formato JSON o formato simple (opcional si usarás OpenAI)</label>
+  <label>Manual Ads — formato JSON o formato simple (opcional si usarás Apikey)</label>
   <div class="note">Formato JSON: [{"headlines":["H1","H2","H3"],"descriptions":["D1","D2"]}, ...]  
   O formato simple: cada anuncio en una línea; titulares separados por "||" y descripciones por "##". Ej: <br>
   H1||H2||H3 ## D1||D2</div>
