@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Generador de campañas Google Ads</title>
+<style>
+  :root{font-family:Inter,system-ui,Arial,Helvetica,sans-serif;color:#0f172a}
+  body{margin:0;background:#f3f4f6;padding:20px}
+  .container{max-width:1150px;margin:0 auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 10px 30px rgba(2,6,23,0.06)}
+  h1{margin:0 0 8px;font-size:20px}
+  p.muted{color:#475569;margin:2px 0 10px;font-size:13px}
+  label{display:block;font-weight:700;margin-top:8px;font-size:13px}
+  input[type=text], input[type=number], input[type=password], select, textarea{
+    width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px;margin-top:6px;font-size:14px;background:#fff;
+  }
+  .row{display:flex;gap:12px;margin-top:10px}
+  .col{flex:1;min-width:0}
+  .small{font-size:12px;color:#6b7280}
+  .btn{display:inline-block;padding:10px 14px;border-radius:8px;border:none;background:#2563eb;color:white;cursor:pointer}
+  .btn.secondary{background:#0ea5e9}
+  .btn.warn{background:#ef4444}
+  .toggles{display:flex;gap:8px;margin-top:8px}
+  .toggle{padding:8px 12px;border-radius:8px;border:1px solid #e5e7eb;cursor:pointer;background:#fff}
+  .toggle.active{background:#10b981;color:white;border-color:#10b981}
+  .card{border:1px solid #e6edf3;padding:12px;border-radius:8px;margin-top:12px;background:#fcfeff}
+  pre{background:#0f172a;color:#e6eef8;padding:10px;border-radius:8px;overflow:auto}
+  footer{margin-top:14px;font-size:12px;color:#6b7280}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .muted{color:#475569;font-size:13px}
+  ul{margin:6px 0 0 18px}
+  .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef2ff;color:#1e3a8a;font-size:12px}
+  .flex{display:flex;gap:8px;align-items:center}
+  .danger{color:#b91c1c;font-weight:700}
+  .note{font-size:12px;color:#475569;margin-top:6px}
+  .muted-inline{color:#6b7280;font-size:12px;margin-left:6px}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Generador de campañas Google Ads</h1>
+
+  <!-- API Key: ahora opcional. Si no la pegás, tenés que pegar manualKeywords y manualAds -->
+  <label>OpenAI API Key <span class="small"> </span></label>
+  <input id="apiKey" type="password" placeholder="sk-..." />
+
+  <label>Brief / Tema (opcional si vas a pegar manualmente keywords y anuncios)</label>
+  <textarea id="theme" rows="3" placeholder="Ej: Zapatos running para mujer 25-40. Enfoque: amortiguación, confort."></textarea>
+
+  <div class="row">
+    <div class="col">
+      <label>Final URL (landing) <span class="small"> — obligatorio para export</span></label>
+      <input id="finalUrl" type="text" value="https://example.com/landing" />
+      <div class="note">Google Ads requiere una URL final válida para anuncios. Debe completarse si quieres descargar CSV.</div>
+    </div>
+    <div class="col">
+      <label>Plantilla UTM (Final URL suffix) <span class="small">(opcional)</span></label>
+      <input id="utmTemplate" type="text" value="" />
+    </div>
+    <div class="col">
+      <label>Nombre campaña</label>
+      <input id="campaignName" type="text" value="Campaña_1" />
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label>Tipo de campaña</label>
+      <select id="campaignType">
+        <option value="Search">Search</option>
+        <option value="Display">Display</option>
+        <option value="Video">Video</option>
+        <option value="Shopping">Shopping</option>
+        <option value="PerformanceMax">Performance Max</option>
+      </select>
+    </div>
+    <div class="col">
+      <label>Presupuesto diario (según la moneda de la cuenta) </label>
+      <input id="budget" type="number" value="" min="1" />
+    </div>
+    <div class="col">
+      <label>Max CPC</label>
+      <input id="maxCpc" type="number" step="0.01" value="" />
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label>Duración (días)</label>
+      <input id="duration" type="number" min="1" value="7" />
+    </div>
+    <div class="col">
+      <label>Idioma</label>
+      <select id="language"><option value="es">Español</option><option value="en">English</option><option value="all">Todos los idiomas</option></select>
+    </div>
+    <div class="col">
+      <label>Tono</label>
+      <select id="tone"><option value="neutral">Neutral</option><option value="friendly">Amigable</option><option value="urgent">Urgente</option><option value="formal">Formal</option></select>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label>Modo de agrupación</label>
+      <select id="groupMode"><option value="auto">Auto - SKAG-lite</option><option value="single">Single Ad Group</option></select>
+    </div>
+    <div class="col">
+      <label>Anuncios por Ad Group</label>
+      <input id="adsPerGroupCount" type="number" min="1" value="3" />
+    </div>
+    <div class="col">
+      <label>Match type preset</label>
+      <select id="matchPreset">
+        <option value="explore">Explorar (60% Broad,25% Phrase,15% Exact)</option>
+        <option value="control">Control (0% Broad,40% Phrase,60% Exact)</option>
+        <option value="defense">Defensa (Exact only)</option>
+        <option value="broad_only">Amplia (100% Broad)</option>
+        <option value="phrase_only">Frase (100% Phrase)</option>
+        <option value="exact_only">Exacta / Concordancia (100% Exact)</option>
+      </select>
+    </div>
+  </div>
+
+  <label>BlackList (palabras que NO quieres en los anuncios — opcional)</label>
+  <input id="blacklist" type="text" placeholder="gratis, 100% garantizado, sin riesgos" />
+
+  <hr style="margin:14px 0"/>
+
+  <!-- Manual inputs: útiles cuando no hay API key o quieres controlar todo -->
+  <h3>Entradas manuales (opcional — usar si no pegas API key)</h3>
+  <div class="note">Si NO pegas tu OpenAI API Key, para generar deberás al menos pegar <strong>Keywords</strong> y <strong>Anuncios</strong> manuales. Si pegas API key, estos campos son opcionales y se usarán como overrides cuando estén presentes.</div>
+
+  <label>Manual Keywords (una por línea) — <span class="small">al menos 1 keyword es obligatoria</span></label>
+  <textarea id="manualKeywords" rows="4" placeholder="zapatos running mujer amortiguacion
+zapatillas para correr mujer
+calzado running mujer"></textarea>
+
+  <label>Manual Ads — formato JSON o formato simple (opcional si usarás OpenAI)</label>
+  <div class="note">Formato JSON: [{"headlines":["H1","H2","H3"],"descriptions":["D1","D2"]}, ...]  
+  O formato simple: cada anuncio en una línea; titulares separados por "||" y descripciones por "##". Ej: <br>
+  H1||H2||H3 ## D1||D2</div>
+  <textarea id="manualAds" rows="5" placeholder='[{"headlines":["Compra zapatillas","Envío rápido"], "descriptions":["Ofertas hasta agotar existencias"]}]'></textarea>
+
+  <div style="display:flex;gap:8px;margin-top:10px;">
+    <button id="generateBtn" class="btn">Generar campaña</button>
+    <button id="previewBtn" class="btn secondary">Previsualizar</button>
+    <button id="downloadBtn" class="btn secondary">Descargar CSVs</button>
+    <button id="downloadExtBtn" class="btn" style="background:#4b5563">Descargar Extensions</button>
+  </div>
+
+  <div id="status" class="card" style="display:none"></div>
+
+  <div id="preview" class="card" style="display:none">
+    <h3>Preview / Resultado</h3>
+    <div id="metaInfo" style="margin-bottom:8px"></div>
+    <div id="adsPreview"></div>
+    <div id="keywordsPreview" style="margin-top:10px"></div>
+    <div id="negativesPreview" style="margin-top:10px"></div>
+    <div id="extensionsPreview" style="margin-top:10px"></div>
+    <div id="preflightReport" style="margin-top:10px"></div>
+  </div>
+
+  <footer>
+      <!-- <p class="small">Notas: El archivo principal `campaign_bulk.csv` está pensado para Bulk Upload (Search + RSA). `negatives.csv` contiene neg keywords (una por línea). `extensions.json` contiene sitelinks/callouts/snippets para import manual o Google Ads Editor. `campaign_audit.csv` contiene prompt y score por grupo. Para producción, protege la API key en servidor.</p> -->
+  </footer>
+</div>
+
+<script>
+/* ---------------- Helpers ---------------- */
+const el = id => document.getElementById(id);
+function isValidUrl(s){ try{ new URL(s); return true }catch(e){ return false } }
+function csvEscape(v){ if(v===undefined||v===null) return ''; const s=String(v); if(s.includes('"')||s.includes(',')||s.includes('\n')||s.includes('\r')) return '"' + s.replace(/"/g,'""') + '"'; return s; }
+function fmtDateYYYYMMDD(d){ const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); return `${yyyy}/${mm}/${dd}`; }
+function sanitizeName(s){ return String(s||'').replace(/[^\w\s-]/g,'').replace(/\s+/g,'_').slice(0,60); }
+function truncateWordBoundary(text, maxLen){ if(!text) return ''; text=String(text).trim(); if(text.length<=maxLen) return text; let cut = text.slice(0,maxLen+1); const lastSpace = cut.lastIndexOf(' '); if(lastSpace>Math.floor(maxLen*0.4)) cut=cut.slice(0,lastSpace); else cut=cut.slice(0,maxLen); return cut; }
+
+/* ---------- Heuristics (policy-lite) ---------- */
+const bannedPatterns = [
+  /\b100% guarantee\b/i, /\bgarantizad[oa]\b/i,
+  /\bcure\b/i, /\bremedio\b/i, /\bcurar\b/i,
+  /\bAPR\b|\binterest rate\b|\bprestam[oó]|cr[eé]dito\b/i,
+  /\b(call|llame|tel:)\s*[:0-9\-\+\s]{6,}\b/i,
+  /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+  /\b(terror|explosiv|weapon|drugs?)\b/i
+];
+function runPolicyHeuristics(text){
+  const flags=[]; for(const re of bannedPatterns){ const m= text.match(re); if(m) flags.push({pattern:re.toString(),excerpt:m[0]}); } return flags;
+}
+
+/* ---------- Negative keywords expansion ---------- */
+function expandNegatives(seedArray){
+  const extras = ['gratis','descarga','descargar','empleo','job','segunda mano','used','tutorial','pdf','como','cómo','opiniones','review','reviews','barato','cheap'];
+  const out = new Set();
+  seedArray.forEach(s=>{
+    if(!s) return;
+    out.add(s.toLowerCase());
+    extras.forEach(e=> out.add((s + ' ' + e).toLowerCase()));
+    out.add('free ' + s.toLowerCase());
+    out.add(s + ' gratis');
+  });
+  ['gratis','barato','cheap','empleo','como','tutorial','pdf'].forEach(x=>out.add(x));
+  return Array.from(out);
+}
+
+/* ---------- Grouping keywords into Ad Groups (SKAG-lite) ---------- */
+function groupKeywords(keywords){
+  const stop = new Set(['de','la','el','los','las','para','con','en','y','a','por','su','del','mi','tu']);
+  const groups = {};
+  keywords.forEach(kw=>{
+    const words = kw.toLowerCase().split(/\s+/).filter(w=>w && !stop.has(w));
+    let key = words.length ? words[0] : kw;
+    if(words.length>1){ key = words.reduce((a,b)=> a.length>b.length? a: b, words[0]); }
+    key = key.replace(/[^a-z0-9]/g,'').slice(0,12) || 'group';
+    const name = sanitizeName(key);
+    groups[name] = groups[name] || [];
+    groups[name].push(kw);
+  });
+  return groups;
+}
+
+/* ---------- Distribute match types according to preset ---------- */
+const presets = {
+  explore: { broad:0.6, phrase:0.25, exact:0.15 },
+  control: { broad:0.0, phrase:0.4, exact:0.6 },
+  defense: { broad:0.0, phrase:0.0, exact:1.0 },
+  broad_only: { broad:1.0, phrase:0.0, exact:0.0 },
+  phrase_only: { broad:0.0, phrase:1.0, exact:0.0 },
+  exact_only: { broad:0.0, phrase:0.0, exact:1.0 }
+};
+function distributeMatchTypes(keywords, preset){
+  const n = keywords.length || 1;
+  const out = { broad:[], phrase:[], exact:[] };
+  const p = presets[preset] || presets.explore;
+  const nb = Math.round(p.broad * n);
+  const np = Math.round(p.phrase * n);
+  const ne = n - nb - np;
+  out.broad = keywords.slice(0, nb);
+  out.phrase = keywords.slice(nb, nb+np);
+  out.exact = keywords.slice(nb+np, nb+np+ne);
+  return out;
+}
+
+/* ---------- Ad Strength scoring ---------- */
+function computeAdStrength(ads, primaryKeywords){
+  let score = 0;
+  const uniqueHeadlines = new Set();
+  ads.forEach(ad=>{
+    (ad.headlines||[]).forEach(h=>{ if(!h) return; uniqueHeadlines.add(h); if(h.length <= 30) score += 2; else score -= 2; });
+    (ad.descriptions||[]).forEach(d=>{ if(!d) return; if(d.length <= 90) score += 1; else score -= 1; });
+  });
+  score += Math.min(12, uniqueHeadlines.size);
+  const text = ads.map(a=> (a.headlines||[]).join(' ') + ' ' + (a.descriptions||[]).join(' ')).join(' ');
+  let kwPresence = 0;
+  (primaryKeywords||[]).slice(0,5).forEach(kw=>{ if(text.toLowerCase().includes(kw.toLowerCase())) kwPresence++; });
+  score += Math.min(6, kwPresence*2);
+  const dupPenalty = Math.max(0, (ads.reduce((acc,a)=>acc + ((a.headlines||[]).length + (a.descriptions||[]).length),0) - uniqueHeadlines.size) * 0.2);
+  score = Math.round(score - dupPenalty);
+  return Math.max(0, score);
+}
+
+/* ---------- CSV Build (supports multiple ad groups) ---------- */
+function buildCsvMulti(result, groupsMap){
+  const columns = [
+    'Campaign','Campaign type','Budget','Budget type','Bid strategy type',
+    'Start date','End date','Final URL suffix','Status',
+    'Ad group','Max CPC','Status',
+    'Ad type','Final URL','Status',
+    'Headline 1','Headline 2','Headline 3','Headline 4','Headline 5','Headline 6','Headline 7','Headline 8','Headline 9','Headline 10','Headline 11','Headline 12','Headline 13','Headline 14','Headline 15',
+    'Description 1','Description 2','Description 3','Description 4',
+    'Keyword','Keyword match type','Max CPC','Status'
+  ];
+  let csv = columns.map(csvEscape).join(',') + '\n';
+
+  const campaignName = el('campaignName').value.trim();
+  const campaignType = el('campaignType').value || 'Search';
+  const maxCpc = el('maxCpc').value;
+  const budget = el('budget').value;
+  const duration = Math.max(1, parseInt(el('duration').value)||1);
+  const start = new Date(), end = new Date(); end.setDate(start.getDate() + duration);
+  const finalUrl = el('finalUrl').value.trim();
+  const utmTemplate = el('utmTemplate').value.trim();
+  const numAds = Math.max(1, parseInt(el('adsPerGroupCount').value) || 3);
+
+  const campaignRow = {
+    'Campaign': campaignName,
+    'Campaign type': campaignType,
+    'Budget': budget,
+    'Budget type': 'Daily',
+    'Bid strategy type': 'Maximize clicks',
+    'Start date': fmtDateYYYYMMDD(start),
+    'End date': fmtDateYYYYMMDD(end),
+    'Final URL suffix': utmTemplate,
+    'Status': 'Enabled'
+  };
+  csv += columns.map(c=>csvEscape(campaignRow[c]||'')).join(',') + '\n';
+
+  const groupNames = Object.keys(groupsMap);
+  groupNames.forEach(groupName => {
+    const kws = groupsMap[groupName] || [];
+    const adGroupRow = { 'Campaign': campaignName, 'Campaign type': campaignType, 'Ad group': groupName, 'Max CPC': maxCpc, 'Status': 'Enabled' };
+    csv += columns.map(c => csvEscape(adGroupRow[c]||'')).join(',') + '\n';
+    const ads = (result.adsPerGroup && result.adsPerGroup[groupName]) || result.ads || [];
+    ads.slice(0,numAds).forEach(ad=>{
+      const adRow = {'Campaign':campaignName, 'Campaign type': campaignType, 'Ad group': groupName, 'Ad type':'RESPONSIVE SEARCH AD', 'Final URL': finalUrl, 'Status':'Enabled'};
+      (ad.headlines||[]).slice(0,15).forEach((h,i)=> adRow['Headline '+(i+1)]=h);
+      (ad.descriptions||[]).slice(0,4).forEach((d,i)=> adRow['Description '+(i+1)]=d);
+      csv += columns.map(c => csvEscape(adRow[c]||'')).join(',') + '\n';
+    });
+    const allKeywords = kws;
+    const presetKey = el('matchPreset').value;
+    const distributed = distributeMatchTypes(allKeywords, presetKey);
+    const pairs = [];
+    (distributed.broad||[]).forEach(k=> pairs.push({k,t:'Broad'}));
+    (distributed.phrase||[]).forEach(k=> pairs.push({k,t:'Phrase'}));
+    (distributed.exact||[]).forEach(k=> pairs.push({k,t:'Exact'}));
+    pairs.forEach(p=>{
+      const row = {'Campaign': campaignName, 'Campaign type': campaignType, 'Ad group': groupName, 'Keyword': p.k, 'Keyword match type': p.t, 'Max CPC': maxCpc, 'Status':'Enabled' };
+      csv += columns.map(c => csvEscape(row[c]||'')).join(',') + '\n';
+    });
+  });
+
+  return csv;
+}
+
+/* ---------- Audit CSV builder ---------- */
+function buildAuditCsv(lastGenerated){
+  const campaign = el('campaignName').value.trim();
+  const cols = ['Campaign','Ad Group','Ad Strength','Prompt','Generated At'];
+  let csv = cols.map(csvEscape).join(',') + '\n';
+  const now = new Date().toISOString();
+  const groups = lastGenerated.groupsMap || {};
+  Object.keys(groups).forEach(g=>{
+    const prompt = (lastGenerated.audit && lastGenerated.audit[g] && lastGenerated.audit[g].prompt) || '';
+    const strength = (lastGenerated.strengthMap && lastGenerated.strengthMap[g]) || '';
+    csv += [campaign, g, strength, prompt.slice(0,300), now].map(csvEscape).join(',') + '\n';
+  });
+  return csv;
+}
+
+/* ---------- Extensions export ---------- */
+function buildExtensionsJson(extensions, campaignName){
+  return {
+    campaign: campaignName,
+    generated_at: new Date().toISOString(),
+    extensions
+  };
+}
+function buildExtensionsCsvPreview(extensions, campaignName){
+  const cols = ['Campaign','Extension type','Text','Final URL','Header','Values'];
+  let csv = cols.map(csvEscape).join(',') + '\n';
+  (extensions.sitelinks||[]).forEach(sl=>{
+    csv += [campaignName,'Sitelink', sl.title || '', sl.url || '', '', ''].map(csvEscape).join(',') + '\n';
+  });
+  (extensions.callouts||[]).forEach(co=>{
+    csv += [campaignName,'Callout', co || '', '', '', ''].map(csvEscape).join(',') + '\n';
+  });
+  (extensions.snippets||[]).forEach(sn=>{
+    csv += [campaignName,'Snippet', '', '', sn.header || '', (sn.values||[]).join('|')].map(csvEscape).join(',') + '\n';
+  });
+  return csv;
+}
+
+/* ---------- OpenAI interaction (client-side) ---------- */
+async function callOpenAI(prompt, apiKey, model='gpt-4o-mini'){
+  const payload = {
+    model,
+    messages: [
+      { role:'system', content:'Eres un redactor senior de Google Ads. Devuelve SOLO JSON.' },
+      { role:'user', content: prompt }
+    ],
+    max_tokens: 1400,
+    temperature: 0.6
+  };
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method:'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + apiKey },
+    body: JSON.stringify(payload)
+  });
+  if(!resp.ok){
+    const txt = await resp.text();
+    throw new Error('OpenAI API error: ' + resp.status + ' - ' + txt);
+  }
+  const j = await resp.json();
+  const content = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+  if(!content) throw new Error('No content from model.');
+  const match = content.match(/\{[\s\S]*\}/);
+  if(!match) throw new Error('No JSON object found in model response.');
+  return JSON.parse(match[0]);
+}
+
+/* ---------- Prompt builders ---------- */
+function buildPromptForSeed({theme, finalUrl, language, tone}){
+  const langText = (language === 'all') ? 'todos los idiomas' : language;
+  return `Genera SOLO JSON con este schema EXACTO:
+{
+  "keywords": ["...","...","..."], 
+  "extensions": {
+    "sitelinks": [{"title":"...","url":"..."}],
+    "callouts": ["...","..."],
+    "snippets": [{"header":"...", "values":["...","..."]}]
+  },
+  "negatives_seed": ["..."]
+}
+Reglas:
+- Usa el brief: "${theme || ''}".
+- Landing: ${finalUrl}
+- Idioma: ${langText}, Tono: ${tone || ''}.
+- Genera al menos 15 keywords semilla relevantes (si puedes).
+- Genera 4 sitelinks y 3 callouts como se indica.
+- Output: SOLO JSON válido, sin texto adicional.`;
+}
+
+function buildPromptForGroup({theme, landingSummary, groupName, kws, language, tone, numAds, stricter=false}){
+  const langText = (language === 'all') ? 'todos los idiomas' : language;
+  const brief = `Brief: ${theme || ''}\nGroup Name: ${groupName}\nTop keywords: ${kws.join(', ')}\nLanding H1: ${landingSummary.h1 || ''}\nLanding meta: ${landingSummary.meta || ''}`;
+  const extra = stricter ? 'Prioriza titulares que incluyan la keyword principal, usa CTA fuerte (Compra ahora, Envío gratis si aplica), y asegura 3 titulares únicos y 2 descripciones. Evita claims no verificables.' : '';
+  return `Genera SOLO JSON con este schema EXACTO:
+{
+  "ads": [
+    { "headlines": ["..."], "descriptions":["..."] },
+    ...
+  ]
+}
+Reglas:
+- ${brief}
+- Idioma: ${langText}, Tono: ${tone || ''}.
+- Genera ${numAds} anuncios de ejemplo para este ad group (cada anuncio 3-8 titulares y 1-3 descripciones).
+- Titulares <=30 caracteres. Descripciones <=90 caracteres. Trunca si excede.
+- ${extra}
+- Output: SOLO JSON válido, sin texto adicional.`;
+}
+
+/* ---------- Landing analysis (attempt) ---------- */
+async function analyzeLanding(url){
+  try{
+    const resp = await fetch(url, { method: 'GET', mode: 'cors' });
+    if(!resp.ok) return { h1: '', meta: '' };
+    const html = await resp.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const h1 = doc.querySelector('h1') ? doc.querySelector('h1').innerText.trim() : '';
+    const meta = doc.querySelector('meta[name="description"]') ? doc.querySelector('meta[name="description"]').getAttribute('content') : '';
+    return { h1: truncateWordBoundary(h1,200), meta: truncateWordBoundary(meta,300) };
+  } catch(e){
+    return { h1: '', meta: '' };
+  }
+}
+
+/* ---------- Parse manualAds helper ---------- */
+function parseManualAdsInput(text){
+  if(!text) return [];
+  text = text.trim();
+  try{
+    // Try JSON first
+    const parsed = JSON.parse(text);
+    if(Array.isArray(parsed)) return parsed.map(ad => ({
+      headlines: (ad.headlines||[]).map(h=>truncateWordBoundary(h,30)),
+      descriptions: (ad.descriptions||[]).map(d=>truncateWordBoundary(d,90))
+    }));
+  } catch(e){
+    // not JSON — try simple line format
+  }
+  // simple format: each line = H1||H2||H3 ## D1||D2
+  const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const ads = [];
+  lines.forEach(line=>{
+    const parts = line.split('##');
+    const heads = parts[0] ? parts[0].split('||').map(h=>truncateWordBoundary(h.trim(),30)).filter(Boolean) : [];
+    const desc = parts[1] ? parts[1].split('||').map(d=>truncateWordBoundary(d.trim(),90)).filter(Boolean) : [];
+    if(heads.length || desc.length) ads.push({ headlines: heads, descriptions: desc });
+  });
+  return ads;
+}
+
+/* ---------- UI state & events ---------- */
+let lastGenerated = null;
+
+function setStatus(msg, visible=true, danger=false){
+  const s = el('status'); s.style.display = visible? 'block':'none'; s.innerHTML = msg; s.style.borderColor = danger? '#fca5a5' : '#e6edf3';
+  s.style.background = danger? '#fff1f2' : '#fcfeff';
+}
+
+function renderPreview(result, report, groupsMap, extensions){
+  el('preview').style.display = 'block';
+  const numAds = Math.max(1, parseInt(el('adsPerGroupCount').value) || 3);
+  el('metaInfo').innerHTML = `<div class="badge">Ad groups: ${Object.keys(groupsMap).length}</div> <span class="small" style="margin-left:8px">Anuncios por grupo: <strong>${numAds}</strong> — Ad strength threshold: <strong id="thresholdValue">12</strong></span>`;
+  const adsDiv = el('adsPreview'); adsDiv.innerHTML = '';
+  Object.keys(groupsMap).forEach(groupName=>{
+    const wrapper = document.createElement('div'); wrapper.style.border='1px solid #eef2f6'; wrapper.style.borderRadius='8px'; wrapper.style.padding='8px'; wrapper.style.marginBottom='8px';
+    const header = document.createElement('div'); header.innerHTML = `<strong>Ad Group: ${groupName}</strong> <span class="small" style="margin-left:8px">(${groupsMap[groupName].length} keywords)</span>`;
+    wrapper.appendChild(header);
+    const ads = (result.adsPerGroup && result.adsPerGroup[groupName]) || result.ads_general || [];
+    ads.slice(0,numAds).forEach((ad,i)=>{
+      const aDiv = document.createElement('div'); aDiv.style.marginTop='8px';
+      aDiv.innerHTML = `<div style="font-weight:600">Ad ${i+1}</div>
+        <div style="margin-top:6px"><em>Titulares:</em><ul>${(ad.headlines||[]).map(h=>`<li>${escapeHtml(h)} <span class="small">(${h.length})</span></li>`).join('')}</ul></div>
+        <div><em>Descripciones:</em><ul>${(ad.descriptions||[]).map(d=>`<li>${escapeHtml(d)} <span class="small">(${d.length})</span></li>`).join('')}</ul></div>`;
+      wrapper.appendChild(aDiv);
+    });
+    const primaryKw = groupsMap[groupName].slice(0,3);
+    const adsForGroup = (result.adsPerGroup && result.adsPerGroup[groupName]) || result.ads_general || [];
+    const strength = computeAdStrength(adsForGroup, primaryKw);
+    const strengthDiv = document.createElement('div'); strengthDiv.innerHTML = `<div style="margin-top:6px">Ad Strength: <strong>${strength}</strong></div>`;
+    wrapper.appendChild(strengthDiv);
+    adsDiv.appendChild(wrapper);
+  });
+
+  const kp = el('keywordsPreview'); kp.innerHTML = `<strong>Keywords (per group)</strong><div class="small" style="margin-top:6px">${Object.keys(groupsMap).map(g=>`<div><strong>${g}:</strong> ${groupsMap[g].slice(0,50).map(k=>escapeHtml(k)).join(', ')}</div>`).join('')}</div>`;
+
+  const negDiv = el('negativesPreview'); negDiv.innerHTML = `<strong>Negative Keywords (suggested)</strong><div class="small" style="margin-top:6px">${(result.negatives || []).slice(0,200).map(n=>escapeHtml(n)).join(', ')}</div>`;
+
+  const extDiv = el('extensionsPreview'); extDiv.innerHTML = `<strong>Extensions</strong>
+    <div class="small" style="margin-top:6px"><strong>Sitelinks:</strong> ${(extensions.sitelinks||[]).map(s=>escapeHtml(s.title)).join(' | ')}</div>
+    <div class="small" style="margin-top:4px"><strong>Callouts:</strong> ${(extensions.callouts||[]).join(' | ')}</div>
+    <div class="small" style="margin-top:4px"><strong>Snippets:</strong> ${(extensions.snippets||[]).map(s=>s.header + ':' + s.values.join('|')).join(' | ')}</div>`;
+
+  const pr = el('preflightReport'); pr.innerHTML = '<strong>Preflight</strong>';
+  pr.innerHTML += '<div class="small" style="margin-top:6px">';
+  (report.ads||[]).forEach((r,i)=>{
+    pr.innerHTML += `<div style="margin-top:6px"><strong>Anuncio ${i+1} errores/warnings:</strong>`;
+    if(r.errors && r.errors.length) pr.innerHTML += `<div class="danger">Errores: ${r.errors.join('; ')}</div>`;
+    if(r.flags && r.flags.length) pr.innerHTML += `<div style="color:#b45309">Flags: ${r.flags.map(f=>escapeHtml(f.excerpt)).join(', ')}</div>`;
+    if(r.blacklisted && r.blacklisted.length) pr.innerHTML += `<div style="color:#ef4444">Blacklist: ${r.blacklisted.join(', ')}</div>`;
+    pr.innerHTML += '</div>';
+  });
+  if(report.keywordsFlags && report.keywordsFlags.length){
+    pr.innerHTML += `<div style="margin-top:6px;color:#b45309"><strong>Keywords alerts:</strong> ${report.keywordsFlags.map(kf=>escapeHtml(kf.keyword)+ (kf.blacklisted.length? ' (blacklist: '+kf.blacklisted.join(', ')+')':'' )).join('; ')}</div>`;
+  }
+  if(report.generalFlags && report.generalFlags.length){
+    pr.innerHTML += `<div style="margin-top:6px;color:#b45309"><strong>General flags:</strong> ${report.generalFlags.map(f=>escapeHtml(f.excerpt)).join(', ')}</div>`;
+  }
+  pr.innerHTML += '</div>';
+}
+
+/* ---------- Escape HTML ---------- */
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- Generate button handler (supports OpenAI or Manual) ---------- */
+el('generateBtn').addEventListener('click', async ()=>{
+  setStatus('Preparando generación...', true);
+  el('preview').style.display = 'none';
+
+  const apiKey = el('apiKey').value.trim();
+  const theme = el('theme').value.trim();
+  const finalUrl = el('finalUrl').value.trim();
+  const language = el('language').value;
+  const tone = el('tone').value;
+  const blacklist = el('blacklist').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const numAds = Math.max(1, parseInt(el('adsPerGroupCount').value) || 3);
+  const threshold = 12;
+
+  // manual inputs
+  const manualKeywordsRaw = el('manualKeywords').value.trim();
+  const manualAdsRaw = el('manualAds').value.trim();
+
+  // validation: minimal required fields
+  if(!finalUrl || !isValidUrl(finalUrl)){
+    setStatus('Error: la Final URL es obligatoria y debe ser válida para poder exportar.'); return;
+  }
+
+  // If no API key: require manual keywords and manual ads (minimal)
+  const manualMode = !apiKey;
+  if(manualMode){
+    if(!manualKeywordsRaw){
+      setStatus('Error: estás en modo manual (sin API key). Debes pegar al menos 1 keyword en "Manual Keywords".'); return;
+    }
+    if(!manualAdsRaw){
+      setStatus('Error: estás en modo manual (sin API key). Debes pegar al menos 1 anuncio en "Manual Ads".'); return;
+    }
+  }
+
+  try{
+    // Attempt landing analysis (best effort)
+    setStatus('Analizando landing (si es accesible)...', true);
+    const landingSummary = await analyzeLanding(finalUrl);
+
+    // placeholders to fill
+    let keywordsSeed = [];
+    let extensions = { sitelinks:[], callouts:[], snippets:[] };
+    let negatives = [];
+    let groupsMap = {};
+    let adsPerGroup = {};
+    let audit = {};
+    let report = { ads: [], keywordsFlags: [], generalFlags: [] };
+
+    if(manualMode){
+      // Use manual inputs
+      setStatus('Usando modo manual: procesando keywords y anuncios proporcionados...', true);
+      // parse keywords (split by line or comma)
+      keywordsSeed = manualKeywordsRaw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      if(keywordsSeed.length === 1 && keywordsSeed[0].includes(',')){
+        // maybe comma separated
+        keywordsSeed = keywordsSeed[0].split(',').map(s=>s.trim()).filter(Boolean);
+      }
+
+      // parse manual ads
+      const manualAds = parseManualAdsInput(manualAdsRaw);
+      // Build basic grouping: either single group or SKAG-lite
+      const groupMode = el('groupMode').value;
+      if(groupMode === 'single'){
+        groupsMap = { [sanitizeName('Main_AdGroup')] : keywordsSeed };
+      } else {
+        groupsMap = groupKeywords(keywordsSeed);
+      }
+
+      // Assign manual ads to all groups (replicated)
+      Object.keys(groupsMap).forEach(g=>{
+        // ensure at least numAds ads: duplicate if necessary
+        const assigned = manualAds.slice(0,numAds);
+        while(assigned.length < numAds){
+          assigned.push(manualAds[0] || {headlines:['Ad'], descriptions:['Desc']});
+        }
+        adsPerGroup[g] = assigned.map(a => ({
+          headlines: (a.headlines||[]).slice(0,15).map(h=>truncateWordBoundary(h,30)),
+          descriptions: (a.descriptions||[]).slice(0,4).map(d=>truncateWordBoundary(d,90))
+        }));
+      });
+
+      // negatives: empty or expand from blacklist
+      negatives = expandNegatives(blacklist);
+
+      // fill lastGenerated
+      lastGenerated = {
+        adsPerGroup,
+        keywordsSeed,
+        groupsMap,
+        extensions,
+        negatives,
+        audit
+      };
+
+      // preflight: validate minimal assets (at least 1 ad with headlines and descriptions)
+      const hasAd = Object.values(adsPerGroup).some(arr => arr && arr.length && arr.some(a => (a.headlines||[]).length && (a.descriptions||[]).length));
+      if(!hasAd){
+        setStatus('Error: los anuncios manuales deben contener al menos un headline y una description.'); return;
+      }
+
+      // compute strengths
+      const strengthMap = {};
+      Object.keys(groupsMap).forEach(g=>{
+        const primaryKw = groupsMap[g].slice(0,3);
+        const str = computeAdStrength(lastGenerated.adsPerGroup[g], primaryKw);
+        strengthMap[g] = str;
+      });
+      lastGenerated.strengthMap = strengthMap;
+
+      renderPreview(lastGenerated, report, groupsMap, extensions);
+      setStatus('Generado en modo manual. Revisa la previsualización.', true);
+      return;
+    }
+
+    // ---------- If we have API key: prefer OpenAI-based flow (as before) ----------
+    setStatus('Generando seeds (keywords, extensions) con OpenAI...', true);
+    const seedPrompt = buildPromptForSeed({theme, finalUrl, language, tone});
+    let rawSeed = null;
+    try{
+      rawSeed = await callOpenAI(seedPrompt, apiKey);
+    } catch(err){
+      throw new Error('Error obteniendo seeds desde OpenAI: ' + err.message);
+    }
+
+    keywordsSeed = (rawSeed.keywords || []).slice(0,200).map(k => String(k).trim()).filter(Boolean);
+    if(keywordsSeed.length === 0){
+      // If nothing returned, try to fallback to manualKeywords if provided
+      const manualProvided = manualKeywordsRaw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      if(manualProvided.length) keywordsSeed = manualProvided;
+    }
+    extensions = rawSeed.extensions || { sitelinks:[], callouts:[], snippets:[] };
+    const negativesSeed = (rawSeed.negatives_seed || []).slice(0,50).map(s=>s.trim()).filter(Boolean);
+    negatives = expandNegatives(negativesSeed.concat(blacklist));
+
+    // If user provided manualKeywords, use it as override
+    if(manualKeywordsRaw){
+      let mk = manualKeywordsRaw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      if(mk.length === 1 && mk[0].includes(',')) mk = mk[0].split(',').map(s=>s.trim()).filter(Boolean);
+      if(mk.length) keywordsSeed = mk;
+    }
+
+    // Group keywords
+    const groupMode = el('groupMode').value;
+    if(groupMode === 'single'){
+      groupsMap = { [sanitizeName('Main_AdGroup')] : keywordsSeed };
+    } else {
+      groupsMap = groupKeywords(keywordsSeed);
+    }
+
+    // Per-group calls to OpenAI to generate ads for each group
+    setStatus('Generando anuncios por Ad Group con OpenAI (varias llamadas)...', true);
+    adsPerGroup = {};
+    audit = {};
+    const numAdsToGenerate = numAds;
+
+    for(const g of Object.keys(groupsMap)){
+      const kws = groupsMap[g].slice(0,10);
+      // If user provided manualAds, use it as override for groups (parse and reuse)
+      if(manualAdsRaw){
+        const parsed = parseManualAdsInput(manualAdsRaw);
+        const assigned = parsed.slice(0,numAdsToGenerate);
+        while(assigned.length < numAdsToGenerate){
+          assigned.push(parsed[0] || {headlines:['Ad'], descriptions:['Desc']});
+        }
+        adsPerGroup[g] = assigned.map(a => ({ headlines: (a.headlines||[]).slice(0,15).map(h=>truncateWordBoundary(h,30)), descriptions: (a.descriptions||[]).slice(0,4).map(d=>truncateWordBoundary(d,90)) }));
+        audit[g] = { prompt: 'manual-override' };
+        continue;
+      }
+
+      const groupPrompt = buildPromptForGroup({theme, landingSummary, groupName:g, kws, language, tone, numAds: numAdsToGenerate, stricter:false});
+      audit[g] = { prompt: groupPrompt };
+      try{
+        const groupResp = await callOpenAI(groupPrompt, apiKey);
+        const grpAds = (groupResp.ads || []).slice(0,numAdsToGenerate).map(ad=>{
+          const hs = (ad.headlines || []).slice(0,15).map(h => truncateWordBoundary(h,30));
+          const ds = (ad.descriptions || []).slice(0,4).map(d => truncateWordBoundary(d,90));
+          return { headlines: hs, descriptions: ds };
+        });
+        if(grpAds.length === 0){
+          adsPerGroup[g] = [];
+        } else {
+          adsPerGroup[g] = grpAds;
+        }
+      } catch(err){
+        audit[g].error = err.message || String(err);
+        adsPerGroup[g] = [];
+      }
+    }
+
+    // Fallback generic ads for groups with no ads
+    Object.keys(groupsMap).forEach(g=>{
+      if(!adsPerGroup[g] || adsPerGroup[g].length === 0){
+        const primary = (groupsMap[g][0] || '').split(' ').slice(0,3).join(' ');
+        const genericAds = [];
+        for(let i=0;i<numAds;i++){
+          const h1 = truncateWordBoundary((primary? primary + ' ' : '') + (i===0? 'Compra ahora' : 'Mejor calidad'), 30);
+          const h2 = truncateWordBoundary('Envío rápido y devolución fácil', 30);
+          const d1 = truncateWordBoundary('Descubre nuestra selección y ofertas especiales.', 90);
+          genericAds.push({ headlines: [h1,h2,'Envío disponible'], descriptions: [d1] });
+        }
+        adsPerGroup[g] = genericAds;
+        audit[g] = audit[g] || {};
+        audit[g].fallback = true;
+      }
+    });
+
+    // Write lastGenerated and do preflight
+    lastGenerated = {
+      adsPerGroup,
+      keywordsSeed,
+      groupsMap,
+      extensions,
+      negatives,
+      audit
+    };
+
+    // Preflight checks
+    report = { ads: [], keywordsFlags: [], generalFlags: [] };
+    Object.keys(groupsMap).forEach(g => {
+      const adsForGroup = lastGenerated.adsPerGroup[g] || [];
+      adsForGroup.forEach(ad=>{
+        const { cleaned, errors } = (function validateAdStructure(ad){
+          const errors = [];
+          const cleaned = { headlines: [], descriptions: [] };
+          const hs = (ad.headlines || []).slice(0,15);
+          const ds = (ad.descriptions || []).slice(0,4);
+          for(const h of hs){
+            const t = truncateWordBoundary(h,30);
+            if(t.length) cleaned.headlines.push(t);
+            if(t.length>30) errors.push('Headline too long: ' + t);
+          }
+          for(const d of ds){
+            const t = truncateWordBoundary(d,90);
+            if(t.length) cleaned.descriptions.push(t);
+            if(t.length>90) errors.push('Description too long: ' + t);
+          }
+          if(cleaned.headlines.length < 1) errors.push('Less than 1 headline.');
+          if(cleaned.descriptions.length < 1) errors.push('Less than 1 description.');
+          return { cleaned, errors };
+        })(ad);
+        const text = (ad.headlines||[]).join(' ') + ' ' + (ad.descriptions||[]).join(' ');
+        const flags = runPolicyHeuristics(text);
+        const blackMatches = (blacklist || []).filter(w => w && text.toLowerCase().includes(w.toLowerCase()));
+        report.ads.push({ cleaned, errors, flags, blacklisted: blackMatches });
+      });
+    });
+
+    // Keywords flags
+    const kwFlags = [];
+    const allKeywords = [].concat(...Object.values(groupsMap));
+    allKeywords.forEach(k=>{
+      const pf = runPolicyHeuristics(k);
+      const blMatches = (el('blacklist').value.split(',').map(s=>s.trim()).filter(Boolean)).filter(w=>w && k.toLowerCase().includes(w.toLowerCase()));
+      if(pf.length || blMatches.length) kwFlags.push({ keyword:k, policyFlags:pf, blacklisted:blMatches });
+    });
+    report.keywordsFlags = kwFlags;
+    report.generalFlags = runPolicyHeuristics(JSON.stringify(lastGenerated));
+
+    // compute ad strength per group
+    const strengthMap = {};
+    Object.keys(groupsMap).forEach(g=>{
+      const primaryKw = groupsMap[g].slice(0,3);
+      const adsForGroup = lastGenerated.adsPerGroup[g] || [];
+      const strength = computeAdStrength(adsForGroup, primaryKw);
+      strengthMap[g] = strength;
+    });
+
+    lastGenerated.groupsMap = groupsMap;
+    lastGenerated.negatives = negatives;
+    lastGenerated.extensions = extensions;
+    lastGenerated.strengthMap = strengthMap;
+    lastGenerated.audit = audit;
+
+    // reattempt for weak groups (retry once)
+    const weakGroups = Object.keys(strengthMap).filter(g => (strengthMap[g] || 0) < threshold);
+    if(weakGroups.length){
+      setStatus(`Grupos débiles detectados (${weakGroups.length}). Reintentando generación para grupos débiles...`, true);
+      for(const g of weakGroups){
+        const kws = groupsMap[g].slice(0,10);
+        const retryPrompt = buildPromptForGroup({theme, landingSummary, groupName:g, kws, language, tone, numAds: numAds, stricter:true});
+        lastGenerated.audit[g] = lastGenerated.audit[g] || {};
+        lastGenerated.audit[g].retryPrompt = retryPrompt;
+        try{
+          const groupResp = await callOpenAI(retryPrompt, apiKey);
+          const grpAds = (groupResp.ads || []).slice(0,numAds).map(ad=>{
+            const hs = (ad.headlines || []).slice(0,15).map(h => truncateWordBoundary(h,30));
+            const ds = (ad.descriptions || []).slice(0,4).map(d => truncateWordBoundary(d,90));
+            return { headlines: hs, descriptions: ds };
+          });
+          if(grpAds.length>0){
+            lastGenerated.adsPerGroup[g] = grpAds;
+            const newStr = computeAdStrength(grpAds, groupsMap[g].slice(0,3));
+            lastGenerated.strengthMap[g] = newStr;
+            lastGenerated.audit[g].retrySuccess = true;
+            lastGenerated.audit[g].retryStrength = newStr;
+          } else {
+            lastGenerated.audit[g].retrySuccess = false;
+          }
+        } catch(err){
+          lastGenerated.audit[g].retryError = err.message || String(err);
+        }
+      }
+    }
+
+    const strengths = Object.values(lastGenerated.strengthMap || {});
+    const minStrength = strengths.length ? Math.min(...strengths) : 0;
+
+    renderPreview(lastGenerated, report, groupsMap, extensions);
+    setStatus(`Generado. Min Ad Strength across groups: ${minStrength}. Si es menor al umbral, la descarga quedará bloqueada.`, true);
+
+  } catch(err){
+    console.error(err);
+    setStatus('Error al generar: ' + (err.message || err), true);
+  }
+});
+
+/* ---------- Download handlers ---------- */
+function downloadBlob(data, filename, type='text/csv'){
+  const blob = new Blob([data], { type: type + ';charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+el('downloadBtn').addEventListener('click', ()=>{
+  if(!lastGenerated){ setStatus('No hay contenido generado. Haz clic en Generar primero.', true); return; }
+
+  // minimal export validation: finalUrl + at least one keyword + at least one ad with headlines/descriptions
+  const finalUrl = el('finalUrl').value.trim();
+  if(!finalUrl || !isValidUrl(finalUrl)){
+    setStatus('Error: para descargar debes proveer una Final URL válida.'); return;
+  }
+  const groupsMap = lastGenerated.groupsMap || {};
+  const totalKeywords = Object.values(groupsMap).reduce((acc,a)=>acc + (a.length||0),0);
+  if(totalKeywords < 1){
+    setStatus('Error: no hay keywords generadas o proporcionadas. Debes tener al menos 1 keyword para exportar.'); return;
+  }
+  // check at least one ad with headline+desc
+  const hasAd = Object.values(lastGenerated.adsPerGroup || {}).some(arr => arr && arr.length && arr.some(a => (a.headlines||[]).length && (a.descriptions||[]).length));
+  if(!hasAd){
+    setStatus('Error: no hay anuncios válidos (headlines + descriptions).'); return;
+  }
+
+  const threshold = 12;
+  const strengths = Object.values(lastGenerated.strengthMap || {});
+  const minStrength = strengths.length ? Math.min(...strengths) : 0;
+  if(minStrength < threshold){
+    setStatus(`Descarga bloqueada. El Ad Strength mínimo es ${minStrength}, menor que el umbral ${threshold}. Mejora titulares/descripciones o regenera.`, true, true);
+    return;
+  }
+
+  const csv = buildCsvMulti(lastGenerated, groupsMap);
+  downloadBlob(csv, 'campaign_bulk.csv','text/csv');
+
+  const negCsv = (lastGenerated.negatives || []).map(n=> String(n).trim()).filter(Boolean).join('\n');
+  downloadBlob(negCsv, 'negatives.csv','text/csv');
+
+  const auditCsv = buildAuditCsv(lastGenerated);
+  downloadBlob(auditCsv, 'campaign_audit.csv','text/csv');
+
+  setStatus('CSV principal, negatives y campaign_audit descargados. También puedes descargar extensions.', true);
+});
+
+el('downloadExtBtn').addEventListener('click', ()=>{
+  if(!lastGenerated){ setStatus('No hay contenido generado. Haz clic en Generar primero.', true); return; }
+  const campaignName = el('campaignName').value.trim();
+  const extJson = buildExtensionsJson(lastGenerated.extensions || {}, campaignName);
+  const extCsv = buildExtensionsCsvPreview(lastGenerated.extensions || {}, campaignName);
+  downloadBlob(JSON.stringify(extJson, null, 2), 'extensions.json','application/json');
+  downloadBlob(extCsv, 'extensions_preview.csv','text/csv');
+  setStatus('Extensions descargadas en JSON y CSV de preview.', true);
+});
+
+/* ---------- Preview toggle ---------- */
+el('previewBtn').addEventListener('click', ()=>{
+  if(el('preview').style.display === 'none' || el('preview').style.display === '') {
+    if(!lastGenerated){ setStatus('No hay resultado para previsualizar. Genera uno primero.'); return; }
+    const groupsMap = lastGenerated.groupsMap || {};
+    const report = { ads: [], keywordsFlags: [], generalFlags: [] };
+    renderPreview(lastGenerated, report, groupsMap, lastGenerated.extensions || {});
+  } else {
+    el('preview').style.display = 'none';
+  }
+});
+
+</script>
+</body>
+</html>
